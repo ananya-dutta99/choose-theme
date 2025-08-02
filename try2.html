@@ -68,7 +68,7 @@
 <body>
 
 <h1>NR-09</h1>
-<div id="turn-indicator">Player 1, choose your word</div>
+<div id="turn-indicator">Player 1, choose your rasa</div>
 
 <div class="grid" id="button-grid"></div>
 
@@ -135,9 +135,9 @@
 
     if (clickIndex < 8) {
       const nextPlayer = players[clickIndex % 4];
-      turnIndicator.textContent = `${nextPlayer}, choose your word`;
+      turnIndicator.textContent = `${nextPlayer}, choose your rasa`;
     } else {
-      turnIndicator.textContent = "All words assigned.";
+      turnIndicator.textContent = "All anomalies distributed.";
     }
   }
 
