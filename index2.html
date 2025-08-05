@@ -71,6 +71,7 @@
       top: 0;
       left: 0;
       box-shadow: 0 0 10px #00ffcc, 0 0 20px #00ffcc, 0 0 30px #00ffcc;
+
     }
 
     .word-box img {
@@ -117,36 +118,30 @@
     }
 
     .blinking-cursor {
-      font-weight: bold;
-      margin-left: 5px;
-      animation: blink 1s infinite;
-    }
+  font-weight: bold;
+  margin-left: 5px;
+  animation: blink 1s infinite;
+}
 
-    @keyframes blink {
-      0%, 50% {
-        opacity: 1;
-      }
-      50.01%, 100% {
-        opacity: 0;
-      }
-    }
+@keyframes blink {
+  0%, 50% {
+    opacity: 1;
+  }
+  50.01%, 100% {
+    opacity: 0;
+  }
+}
 
-    .centered-logs {
-      justify-content: center !important;
-      align-items: center !important;
-      flex-direction: column;
-      text-align: center;
-      font-size: 2em;
-      transform: scale(1.4);
-      gap: 1em;
-    }
   </style>
 </head>
 
 <body>
+
 <h1>MF-25<span class="blinking-cursor">_</span></h1>
 <div id="turn-indicator">User 1, choose:</div>
+
 <div class="grid" id="button-grid"></div>
+
 <div class="log-container" id="log-container">
   <div class="user-log" id="user-1-log"><div class="user-title">USER 1</div></div>
   <div class="user-log" id="user-2-log"><div class="user-title">USER 2</div></div>
@@ -157,27 +152,49 @@
 <script>
   const wordsPool = ['SHNG', 'HSYA', 'VRA', 'KRNA', 'BBTS', 'BYNK', 'RDRA', 'ADBT'];
   const users = ['User 1', 'User 2', 'User 3', 'User 4'];
+
   const groupA = ['BBTS', 'VRA', 'BYNK', 'RDRA'];
   const groupB = ['KRNA', 'HSYA', 'ADBT', 'SHNG'];
-  const forbiddenPairs = [['BBTS', 'SHNG'], ['BBTS', 'KRNA']];
+
+  const forbiddenPairs = [
+    ['BBTS', 'SHNG'],
+    ['BBTS', 'KRNA']
+  ];
+
   const correlations = {
-    'BYNK': 'BHAYANAK', 'RDRA': 'RAUDRA', 'BBTS': 'BIBHATSA', 'KRNA': 'KARUNA',
-    'SHNG': 'SHRINGAR', 'ADBT': 'ADBHUTA', 'HSYA': 'HASYA', 'VRA': 'VEERA'
+    'BYNK': 'BHAYANAK',
+    'RDRA': 'RAUDRA',
+    'BBTS': 'BIBHATSA',
+    'KRNA': 'KARUNA',
+    'SHNG': 'SHRINGAR',
+    'ADBT': 'ADBHUTA',
+    'HSYA': 'HASYA',
+    'VRA': 'VEERA'
   };
 
-  let assigned = { 'User 1': [], 'User 2': [], 'User 3': [], 'User 4': [] };
+  let assigned = {
+    'User 1': [],
+    'User 2': [],
+    'User 3': [],
+    'User 4': []
+  };
+
   let shuffledWords = [...wordsPool].sort(() => Math.random() - 0.5);
   let clickIndex = 0;
 
   const grid = document.getElementById('button-grid');
   const turnIndicator = document.getElementById('turn-indicator');
 
+  // Create 8 buttons
   for (let i = 0; i < 8; i++) {
     const btn = document.createElement('button');
     btn.className = 'word-button';
+    btn.disabled = false;
+
     const img = document.createElement('img');
     img.src = 'folder.png';
     img.alt = 'folder';
+
     btn.appendChild(img);
     btn.addEventListener('click', () => handleClick(btn, img, i));
     grid.appendChild(btn);
@@ -190,7 +207,15 @@
     const user = users[userIndex];
     const isFirstPick = assigned[user].length === 0;
 
-    let selectedWord = isFirstPick ? shuffledWords.shift() : findValidPair(assigned[user][0]);
+    let selectedWord;
+
+    if (isFirstPick) {
+      selectedWord = shuffledWords.shift();
+    } else {
+      const firstWord = assigned[user][0];
+      selectedWord = findValidPair(firstWord);
+    }
+
     if (!selectedWord) return;
 
     assigned[user].push(selectedWord);
@@ -200,31 +225,41 @@
 
     setTimeout(() => {
       image.style.display = 'none';
+
       const wordBox = document.createElement('div');
       wordBox.className = 'word-box';
+
+      // Add image instead of text
       const rasaImage = document.createElement('img');
-      rasaImage.src = `images/${selectedWord}.png`;
+      rasaImage.src = `images/${selectedWord}.png`;  // Placeholder path
       rasaImage.alt = correlations[selectedWord] || selectedWord;
+
       wordBox.appendChild(rasaImage);
       button.appendChild(wordBox);
 
+      // Fade in image
       setTimeout(() => {
         wordBox.classList.add('visible');
+
+        // Log text label below
         const logId = `user-${userIndex + 1}-log`;
         const userLogDiv = document.getElementById(logId);
         const entry = document.createElement('div');
         entry.className = 'log-entry';
         entry.textContent = correlations[selectedWord] || selectedWord;
         userLogDiv.appendChild(entry);
-        setTimeout(() => entry.classList.add('visible'), 10);
+
+        setTimeout(() => {
+          entry.classList.add('visible');
+        }, 10);
 
         if (clickIndex < 8) {
           const nextUser = users[clickIndex % 4];
           turnIndicator.textContent = `${nextUser}, choose:`;
         } else {
           turnIndicator.textContent = "All anomalies distributed";
-          setTimeout(triggerFinalPrompt, 5000);
         }
+
       }, 1000);
     }, 1000);
 
@@ -247,22 +282,14 @@
     const sameGroup =
       (groupA.includes(word1) && groupA.includes(word2)) ||
       (groupB.includes(word1) && groupB.includes(word2));
+
     const isForbidden = forbiddenPairs.some(
       pair => pair.includes(word1) && pair.includes(word2)
     );
+
     return !sameGroup && !isForbidden;
   }
-
-  function triggerFinalPrompt() {
-    const confirm = window.confirm('VIEW ANOMALIES CREATED??:');
-    if (confirm) {
-      document.querySelector('h1').style.display = 'none';
-      document.getElementById('turn-indicator').style.display = 'none';
-      document.getElementById('button-grid').style.display = 'none';
-      const log = document.getElementById('log-container');
-      log.classList.add('centered-logs');
-    }
-  }
 </script>
+
 </body>
 </html>
