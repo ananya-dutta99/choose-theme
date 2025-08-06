@@ -230,10 +230,10 @@
   <div class="grid" id="button-grid"></div>
 
   <div class="log-container" id="log-container">
-    <div class="user-log" id="user-1-log"><div class="user-title">USER 1</div></div>
-    <div class="user-log" id="user-2-log"><div class="user-title">USER 2</div></div>
-    <div class="user-log" id="user-3-log"><div class="user-title">USER 3</div></div>
-    <div class="user-log" id="user-4-log"><div class="user-title">USER 4</div></div>
+    <div class="user-log" id="user-1-log"><div class="user-title">ANOMALY 1</div></div>
+    <div class="user-log" id="user-2-log"><div class="user-title">ANOMALY 2</div></div>
+    <div class="user-log" id="user-3-log"><div class="user-title">ANOMALY 3</div></div>
+    <div class="user-log" id="user-4-log"><div class="user-title">ANOMALY 4</div></div>
   </div>
 </div>
 
@@ -282,10 +282,183 @@
     'User 4': []
   };
 
-  let shuffledWords = [...wordsPool].sort(() => Math.random() - 0.5);
+  let availableWords = [...wordsPool];
   let clickIndex = 0;
+  let preGeneratedPairs = [];
+
+  function generateValidDistribution() {
+    // Create all possible valid pairs
+    const validPairs = [];
+    
+    for (let i = 0; i < wordsPool.length; i++) {
+      for (let j = i + 1; j < wordsPool.length; j++) {
+        const word1 = wordsPool[i];
+        const word2 = wordsPool[j];
+        
+        if (isValidPair(word1, word2)) {
+          validPairs.push([word1, word2]);
+        }
+      }
+    }
+    
+    console.log('Valid pairs found:', validPairs); // Debug log
+    
+    // Try to find a valid distribution
+    let attempts = 0;
+    const maxAttempts = 1000;
+    
+    while (attempts < maxAttempts) {
+      const shuffledPairs = [...validPairs].sort(() => Math.random() - 0.5);
+      const usedWords = new Set();
+      const selectedPairs = [];
+      
+      // Try to select 4 pairs that use all 8 words
+      for (const pair of shuffledPairs) {
+        if (!usedWords.has(pair[0]) && !usedWords.has(pair[1])) {
+          selectedPairs.push(pair);
+          usedWords.add(pair[0]);
+          usedWords.add(pair[1]);
+          
+          if (selectedPairs.length === 4) {
+            console.log('Selected pairs:', selectedPairs); // Debug log
+            
+            // Distribute pairs correctly to users
+            const shuffledSelectedPairs = selectedPairs.sort(() => Math.random() - 0.5);
+            const result = [];
+            
+            // Each user gets one complete pair
+            // User clicks: User1, User2, User3, User4, User1, User2, User3, User4
+            // So positions 0,4 go to User1; 1,5 to User2; 2,6 to User3; 3,7 to User4
+            
+            for (let userIdx = 0; userIdx < 4; userIdx++) {
+              const pair = shuffledSelectedPairs[userIdx];
+              const firstClickPos = userIdx;       // User's first click: 0,1,2,3
+              const secondClickPos = userIdx + 4;  // User's second click: 4,5,6,7
+              
+              // Randomly decide order within the pair
+              if (Math.random() > 0.5) {
+                result[firstClickPos] = pair[0];
+                result[secondClickPos] = pair[1];
+              } else {
+                result[firstClickPos] = pair[1];
+                result[secondClickPos] = pair[0];
+              }
+            }
+            
+            console.log('Final distribution:', result); // Debug log
+            console.log('User assignments will be:', {
+              'User 1': [result[0], result[4]],
+              'User 2': [result[1], result[5]], 
+              'User 3': [result[2], result[6]],
+              'User 4': [result[3], result[7]]
+            });
+            return result;
+          }
+        }
+      }
+      
+      attempts++;
+    }
+    
+    // More careful fallback - ensure it follows all rules
+    console.warn('Could not find optimal distribution, using carefully constructed fallback');
+    
+    // Known valid pairs that follow all rules:
+    // Group A: BBTS, VRA, BYNK, RDRA
+    // Group B: KRNA, HSYA, ADBT, SHNG  
+    // Forbidden: [BBTS,SHNG], [BBTS,KRNA]
+    // Valid pairs must be Group A + Group B, avoiding forbidden combinations
+    
+    // Let's verify each pair is actually valid
+    const potentialPairs = [
+      ['BBTS', 'ADBT'], // Group A + Group B
+      ['VRA', 'KRNA'],  // Group A + Group B
+      ['BYNK', 'HSYA'], // Group A + Group B  
+      ['RDRA', 'SHNG']  // Group A + Group B
+    ];
+    
+    const knownValidPairs = [];
+    
+    potentialPairs.forEach(pair => {
+      if (isValidPair(pair[0], pair[1])) {
+        knownValidPairs.push(pair);
+        console.log(`✓ Valid pair: ${pair[0]} (${correlations[pair[0]]}) + ${pair[1]} (${correlations[pair[1]]})`);
+      } else {
+        console.log(`✗ Invalid pair: ${pair[0]} (${correlations[pair[0]]}) + ${pair[1]} (${correlations[pair[1]]})`);
+      }
+    });
+    
+    if (knownValidPairs.length !== 4) {
+      console.error('Cannot create 4 valid pairs for fallback!');
+      // Try alternative combinations
+      const allGroupAPairs = [
+        ['BBTS', 'KRNA'], ['BBTS', 'HSYA'], ['BBTS', 'ADBT'], ['BBTS', 'SHNG'],
+        ['VRA', 'KRNA'], ['VRA', 'HSYA'], ['VRA', 'ADBT'], ['VRA', 'SHNG'],
+        ['BYNK', 'KRNA'], ['BYNK', 'HSYA'], ['BYNK', 'ADBT'], ['BYNK', 'SHNG'],
+        ['RDRA', 'KRNA'], ['RDRA', 'HSYA'], ['RDRA', 'ADBT'], ['RDRA', 'SHNG']
+      ];
+      
+      const validAlternatives = allGroupAPairs.filter(pair => isValidPair(pair[0], pair[1]));
+      console.log('Valid alternatives found:', validAlternatives);
+      
+      // Try to pick 4 that use all words
+      const usedWords = new Set();
+      const finalPairs = [];
+      
+      for (const pair of validAlternatives) {
+        if (!usedWords.has(pair[0]) && !usedWords.has(pair[1])) {
+          finalPairs.push(pair);
+          usedWords.add(pair[0]);
+          usedWords.add(pair[1]);
+          
+          if (finalPairs.length === 4) break;
+        }
+      }
+      
+      if (finalPairs.length === 4) {
+        console.log('Using alternative pairs:', finalPairs);
+        return finalPairs;
+      }
+    }
+    
+    // Create distribution ensuring pairs stay together for each user
+    const shuffledKnown = knownValidPairs.sort(() => Math.random() - 0.5);
+    const fallbackResult = [];
+    
+    // Each user gets one complete pair
+    // User clicks alternate: User1, User2, User3, User4, User1, User2, User3, User4
+    // So positions 0,4 go to User1; 1,5 to User2; 2,6 to User3; 3,7 to User4
+    
+    // We need to distribute pairs so each user gets their two words in the right positions
+    for (let userIdx = 0; userIdx < 4; userIdx++) {
+      const pair = shuffledKnown[userIdx];
+      const firstClickPos = userIdx;       // User's first click: 0,1,2,3
+      const secondClickPos = userIdx + 4;  // User's second click: 4,5,6,7
+      
+      // Randomly decide order within the pair
+      if (Math.random() > 0.5) {
+        fallbackResult[firstClickPos] = pair[0];
+        fallbackResult[secondClickPos] = pair[1];
+      } else {
+        fallbackResult[firstClickPos] = pair[1];
+        fallbackResult[secondClickPos] = pair[0];
+      }
+    }
+    
+    console.log('Fallback distribution:', fallbackResult);
+    console.log('Fallback user assignments:', {
+      'User 1': [fallbackResult[0], fallbackResult[4]],
+      'User 2': [fallbackResult[1], fallbackResult[5]], 
+      'User 3': [fallbackResult[2], fallbackResult[6]],
+      'User 4': [fallbackResult[3], fallbackResult[7]]
+    });
+    return fallbackResult;
+  }
 
   function initializeGame() {
+    // Pre-generate a valid distribution
+    preGeneratedPairs = generateValidDistribution();
+    
     const grid = document.getElementById('button-grid');
     const turnIndicator = document.getElementById('turn-indicator');
 
@@ -310,20 +483,32 @@
 
     const userIndex = clickIndex % 4;
     const user = users[userIndex];
-    const isFirstPick = assigned[user].length === 0;
-
-    let selectedWord;
-
-    if (isFirstPick) {
-      selectedWord = shuffledWords.shift();
-    } else {
-      const firstWord = assigned[user][0];
-      selectedWord = findValidPair(firstWord);
+    
+    // Use pre-generated distribution
+    const selectedWord = preGeneratedPairs[clickIndex];
+    
+    if (!selectedWord) {
+      console.error('No word available for click', clickIndex);
+      return;
     }
 
-    if (!selectedWord) return;
-
     assigned[user].push(selectedWord);
+    
+    // Debug: Log what each user is getting
+    console.log(`Click ${clickIndex}: ${user} gets ${selectedWord} (${correlations[selectedWord]})`);
+    console.log(`${user} now has:`, assigned[user].map(w => `${w} (${correlations[w]})`));
+    
+    // Validate user's pair when they get their second word
+    if (assigned[user].length === 2) {
+      const word1 = assigned[user][0];
+      const word2 = assigned[user][1];
+      const isValid = isValidPair(word1, word2);
+      console.log(`${user} pair validation: ${word1} + ${word2} = ${isValid ? 'VALID' : 'INVALID'}`);
+      if (!isValid) {
+        console.error(`INVALID PAIR DETECTED FOR ${user}: ${word1} (${correlations[word1]}) + ${word2} (${correlations[word2]})`);
+      }
+    }
+    
     clickIndex++;
 
     image.classList.add('fade-out');
@@ -371,17 +556,6 @@
 
     button.classList.add('disabled');
     button.disabled = true;
-  }
-
-  function findValidPair(firstWord) {
-    for (let i = 0; i < shuffledWords.length; i++) {
-      const candidate = shuffledWords[i];
-      if (isValidPair(firstWord, candidate)) {
-        shuffledWords.splice(i, 1);
-        return candidate;
-      }
-    }
-    return null;
   }
 
   function isValidPair(word1, word2) {
